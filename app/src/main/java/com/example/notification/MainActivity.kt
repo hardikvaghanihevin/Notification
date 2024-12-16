@@ -9,23 +9,16 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Color
 import android.os.Build
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
 import android.widget.Button
 import androidx.annotation.RequiresApi
-import androidx.core.app.NotificationCompat
-import androidx.core.app.NotificationManagerCompat
-
-
-
+import androidx.appcompat.app.AppCompatActivity
 
 class MainActivity : AppCompatActivity() {
     private val CHANNEL_ID = "channelId"
-    val CHANNEL_NAME = "channelName"
-    val notificationId = 0
-    @SuppressLint("MissingPermission")
+    private val CHANNEL_NAME = "channelName"
+    private val notificationId = 0
+
     @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -33,34 +26,42 @@ class MainActivity : AppCompatActivity() {
 
         createNotificationChannel()
 
-        val intent = Intent(this,MainActivity::class.java)
-        val pendingIntent = PendingIntent.getActivity(this,0,intent, PendingIntent.FLAG_MUTABLE)
-
-        val notification = NotificationCompat.Builder(this,CHANNEL_ID).setContentTitle("Congratulations!").setContentText("this is a notification").setSmallIcon(R.drawable.ic_launcher_foreground).setPriority(NotificationCompat.PRIORITY_HIGH).setContentIntent(pendingIntent).build()
         val btn = findViewById<Button>(R.id.btn)
-        val notificationManager = NotificationManagerCompat.from(this)
         btn.setOnClickListener {
-            Handler(Looper.getMainLooper()).postDelayed({
-                notificationManager.notify(notificationId, notification)
-            },5000L)
+            scheduleNotification()
         }
-
     }
-    @RequiresApi(Build.VERSION_CODES.O)
-    fun createNotificationChannel(){
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel =  NotificationChannel(CHANNEL_ID,CHANNEL_NAME, NotificationManager.IMPORTANCE_DEFAULT).apply {
-                description = "This is my notification channel"
-                lightColor = Color.GREEN
-                enableLights(true)
-            }
-            val manager =  getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            manager.createNotificationChannel(channel)
-        } else {
-            TODO("VERSION.SDK_INT < O")
+    @RequiresApi(Build.VERSION_CODES.O)
+    fun createNotificationChannel() {
+        val channel = NotificationChannel(CHANNEL_ID, CHANNEL_NAME, NotificationManager.IMPORTANCE_DEFAULT).apply {
+            description = "This is my notification channel"
+            lightColor = Color.GREEN
+            enableLights(true)
+        }
+        val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        manager.createNotificationChannel(channel)
+    }
+
+    @SuppressLint("ScheduleExactAlarm")
+    private fun  scheduleNotification() {
+        val intent = Intent(this, NotificationReceiver::class.java).apply {
+            putExtra("title", "Congratulations!")
+            putExtra("message", "This is a background notification.")
         }
 
+        val pendingIntent = PendingIntent.getBroadcast(
+            this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
+        )
+
+        val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        val triggerTime = System.currentTimeMillis() + 10 * 1000 // Trigger after 10 seconds
+
+        alarmManager.setExactAndAllowWhileIdle(
+            AlarmManager.RTC_WAKEUP,
+            triggerTime,
+            pendingIntent
+        )
     }
 }
 
